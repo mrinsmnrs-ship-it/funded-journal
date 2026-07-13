@@ -100,7 +100,15 @@ const weekdayWinRate = [
 ];
 const worstDay = weekdayWinRate.reduce((a, b) => (b.wr < a.wr ? b : a));
 
-const disciplineScore = { current: 72, previous: 65 };
+// Rasio Kepatuhan Aturan: rumus eksplisit, bukan skor komposit rahasia.
+// = persentase hari trading (30 hari terakhir) di mana rugi harian tidak pernah
+// melewati 50% dari batas limit firm.
+const ruleAdherence = {
+  pctSafeDays: 27,
+  totalDays: 30,
+  previousPctSafeDays: 24,
+  previousTotalDays: 30,
+};
 
 const weeklyBriefing = {
   range: "7 – 13 Jul 2026",
@@ -111,53 +119,103 @@ const weeklyBriefing = {
 
 const notifPreview = {
   time: "14:32",
-  title: "Ringkasan Perilaku",
-  body: "Terdeteksi 2 kerugian beruntun dalam 20 menit terakhir. Berdasarkan 90 hari histori, win rate pada kondisi serupa turun ke 41% (rata-rata 64%).",
+  title: "Pengingat Pola Historis",
+  body: "Terdeteksi 2 kerugian beruntun dalam 20 menit terakhir. Pada 19 kejadian serupa dalam 90 hari terakhir, ukuran lot rata-rata naik 40% pada transaksi berikutnya. Ini pengingat berdasarkan data historismu, bukan peringatan otomatis dari firm.",
 };
 
-const fundedAccount = {
-  firm: "FTMO",
-  phase: "Verification",
-  size: 100000,
-  currency: "USD",
-  resetIn: "5j 18m",
-  dailyLoss: { current: 1240, limit: 5000 },
-  drawdown: { current: 3150, limit: 10000 },
-  tradingDays: { current: 6, required: 4 },
-  profitTarget: { current: 3820, target: 5000 },
-  consistency: { limitPct: 30, largestDayProfit: 1450, totalProfit: 3820 },
-};
+const fundedAccounts = [
+  {
+    id: "acc-1",
+    firm: "FTMO",
+    phase: "Verification",
+    size: 100000,
+    currency: "USD",
+    resetIn: "5j 18m",
+    dailyLoss: { current: 1240, limit: 5000 },
+    drawdown: { current: 3150, limit: 10000 },
+    tradingDays: { current: 6, required: 4 },
+    profitTarget: { current: 3820, target: 5000 },
+    consistency: { limitPct: 30, largestDayProfit: 1450, totalProfit: 3820 },
+  },
+  {
+    id: "acc-2",
+    firm: "The5ers",
+    phase: "Funded",
+    size: 50000,
+    currency: "USD",
+    resetIn: "2j 04m",
+    dailyLoss: { current: 3820, limit: 4000 },
+    drawdown: { current: 7100, limit: 8000 },
+    tradingDays: { current: 14, required: 0 },
+    profitTarget: { current: 0, target: 0 },
+    consistency: { limitPct: 25, largestDayProfit: 610, totalProfit: 2040 },
+  },
+  {
+    id: "acc-3",
+    firm: "MyFundedFX",
+    phase: "Challenge",
+    size: 25000,
+    currency: "USD",
+    resetIn: "9j 52m",
+    dailyLoss: { current: 210, limit: 1250 },
+    drawdown: { current: 480, limit: 2500 },
+    tradingDays: { current: 2, required: 5 },
+    profitTarget: { current: 1180, target: 2500 },
+    consistency: { limitPct: 30, largestDayProfit: 320, totalProfit: 1180 },
+  },
+];
+
+// Turunkan status ringkas per akun dari angka aslinya — bukan skor buatan.
+function getAccountStatus(acc) {
+  const dailyPct = (acc.dailyLoss.current / acc.dailyLoss.limit) * 100;
+  const ddPct = (acc.drawdown.current / acc.drawdown.limit) * 100;
+  const consistencyPct = acc.consistency.totalProfit > 0
+    ? (acc.consistency.largestDayProfit / acc.consistency.totalProfit) * 100
+    : 0;
+  const consistencyBreach = consistencyPct > acc.consistency.limitPct;
+  const worstPct = Math.max(dailyPct, ddPct);
+
+  let level = "aman", color = C.profit, label = "Aman";
+  if (consistencyBreach || worstPct >= 90) { level = "kritis"; color = C.loss; label = "Kritis"; }
+  else if (worstPct >= 70) { level = "hati-hati"; color = C.warn; label = "Hati-hati"; }
+
+  const closestRule = dailyPct >= ddPct
+    ? { name: "Batas Rugi Harian", pct: dailyPct, buffer: acc.dailyLoss.limit - acc.dailyLoss.current }
+    : { name: "Max Drawdown", pct: ddPct, buffer: acc.drawdown.limit - acc.drawdown.current };
+
+  return { level, color, label, worstPct, closestRule, consistencyBreach };
+}
 
 const plans = [
   {
     id: "harian",
     icon: Zap,
-    name: "Sync Harian",
-    freq: "Sinkron 1x /hari",
+    name: "Proteksi Harian",
+    freq: "Cek aturan & sinkron 1x /hari",
     price: "Rp149rb",
     per: "/bulan",
     recommended: true,
-    features: ["Sinkronisasi otomatis dari MT5 tiap hari", "Semua fitur dashboard & analitik", "Riwayat transaksi tanpa batas"],
+    features: ["Pemantauan aturan funded real-time tiap hari", "Notifikasi dini sebelum mendekati batas rugi/drawdown", "Riwayat transaksi & insight tanpa batas"],
   },
   {
     id: "mingguan",
     icon: RefreshCw,
-    name: "Sync Mingguan",
-    freq: "Sinkron 1x /minggu",
+    name: "Proteksi Mingguan",
+    freq: "Cek aturan & sinkron 1x /minggu",
     price: "Rp79rb",
     per: "/bulan",
     recommended: false,
-    features: ["Sinkronisasi otomatis dari MT5 tiap minggu", "Semua fitur dashboard & analitik", "Cocok untuk swing trader"],
+    features: ["Pemantauan aturan funded tiap minggu", "Notifikasi dini sebelum mendekati batas rugi/drawdown", "Cocok untuk swing trader"],
   },
   {
     id: "bulanan",
     icon: CalendarClock,
-    name: "Sync Bulanan",
-    freq: "Sinkron 1x /bulan",
+    name: "Proteksi Bulanan",
+    freq: "Cek aturan & sinkron 1x /bulan",
     price: "Rp39rb",
     per: "/bulan",
     recommended: false,
-    features: ["Sinkronisasi otomatis dari MT5 tiap bulan", "Semua fitur dashboard & analitik", "Cocok untuk investor jangka panjang"],
+    features: ["Pemantauan aturan funded tiap bulan", "Notifikasi dini sebelum mendekati batas rugi/drawdown", "Cocok untuk investor jangka panjang"],
   },
 ];
 
@@ -441,7 +499,7 @@ function HistoryScreen() {
   );
 }
 
-/* ---------- Insight Perilaku (behavioral analytics — the differentiator) ---------- */
+/* ---------- Insight Perilaku (behavioral analytics — tied to breach risk) ---------- */
 function MiniBarCompare({ items }) {
   const max = Math.max(...items.map((i) => i.value));
   return (
@@ -494,7 +552,7 @@ function Switch({ on, onToggle }) {
   );
 }
 
-function InsightCard({ icon: Icon, tag, title, trend, sample, children, action, active, onToggle }) {
+function InsightCard({ icon: Icon, tag, title, trend, sample, evidenceNote, children, action, active, onToggle }) {
   return (
     <Card>
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
@@ -518,6 +576,15 @@ function InsightCard({ icon: Icon, tag, title, trend, sample, children, action, 
       <div style={{ fontSize: 13.5, fontWeight: 700, color: C.text, marginBottom: 4 }}>{title}</div>
       {children}
 
+      {evidenceNote && (
+        <div style={{
+          display: "flex", gap: 7, marginTop: 10, background: C.surfaceAlt, borderRadius: 8, padding: "8px 10px",
+        }}>
+          <Info size={13} color={C.faint} style={{ flexShrink: 0, marginTop: 1.5 }} />
+          <span style={{ fontSize: 11, color: C.sub, lineHeight: 1.5 }}>{evidenceNote}</span>
+        </div>
+      )}
+
       {action && (
         <div style={{
           marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.hair}`,
@@ -525,7 +592,10 @@ function InsightCard({ icon: Icon, tag, title, trend, sample, children, action, 
         }}>
           <div style={{ flex: 1 }}>
             <div style={{ fontSize: 11.5, color: C.text, fontWeight: 600 }}>{action}</div>
-            {active && <div style={{ fontSize: 10, color: C.sub, marginTop: 2 }}>Diikuti pada 4 dari 5 kesempatan minggu ini</div>}
+            <div style={{ fontSize: 10, color: C.faint, marginTop: 2 }}>
+              Pengingat notifikasi saja — StayFunded tidak bisa mengunci atau membatalkan eksekusi order di MT5.
+            </div>
+            {active && <div style={{ fontSize: 10, color: C.sub, marginTop: 2 }}>Notifikasi diaktifkan · muncul 4 dari 5 kesempatan minggu ini</div>}
           </div>
           <Switch on={active} onToggle={onToggle} />
         </div>
@@ -547,7 +617,7 @@ function InsightScreen() {
       <div>
         <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>Insight Perilaku</div>
         <div style={{ color: C.sub, fontSize: 12, marginTop: 2, lineHeight: 1.5 }}>
-          Korelasi statistik antara kondisi trading dan hasilmu — bukan saran finansial, hanya pola dari data historismu sendiri.
+          Pola statistik dari histori transaksimu sendiri — bukan prediksi, bukan saran finansial, dan sampelnya sering kecil. Baca sebagai bahan refleksi, bukan kepastian.
         </div>
       </div>
 
@@ -560,22 +630,23 @@ function InsightScreen() {
         <div style={{ fontSize: 12, color: C.text, lineHeight: 1.6 }}>{weeklyBriefing.text}</div>
       </Card>
 
-      {/* discipline score — composite index, not a game badge */}
+      {/* rasio kepatuhan aturan — rumus eksplisit, bisa diverifikasi, bukan skor rahasia */}
       <Card>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Skor Disiplin</div>
-            <div style={{ fontSize: 10.5, color: C.sub, marginTop: 2, maxWidth: 200, lineHeight: 1.5 }}>
-              Indeks kepatuhan terhadap pola yang teridentifikasi sebagai risiko pada akunmu.
+          <div style={{ maxWidth: 210 }}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: C.text }}>Rasio Kepatuhan Aturan</div>
+            <div style={{ fontSize: 10.5, color: C.sub, marginTop: 2, lineHeight: 1.5 }}>
+              % hari trading (30 hari terakhir) di mana rugi harian tidak pernah melewati 50% dari batas limit firm-mu.
             </div>
           </div>
           <div style={{ textAlign: "right" }}>
-            <div style={{ fontFamily: FONT_MONO, fontSize: 26, fontWeight: 700, color: C.text }}>
-              {disciplineScore.current}
+            <div style={{ fontFamily: FONT_MONO, fontSize: 22, fontWeight: 700, color: C.text }}>
+              {ruleAdherence.pctSafeDays}/{ruleAdherence.totalDays}
+              <span style={{ fontSize: 12, color: C.sub }}> hari</span>
             </div>
             <TrendBadge
-              direction="improving"
-              label={`+${disciplineScore.current - disciplineScore.previous} vs minggu lalu`}
+              direction={ruleAdherence.pctSafeDays >= ruleAdherence.previousPctSafeDays ? "improving" : "worsening"}
+              label={`${ruleAdherence.pctSafeDays >= ruleAdherence.previousPctSafeDays ? "+" : ""}${ruleAdherence.pctSafeDays - ruleAdherence.previousPctSafeDays} hari vs periode lalu`}
             />
           </div>
         </div>
@@ -583,13 +654,14 @@ function InsightScreen() {
 
       <InsightCard
         icon={Repeat}
-        tag="REVENGE TRADING"
+        tag="JEDA ENTRY SETELAH RUGI"
         title="Entry berikutnya lebih cepat setelah rugi"
         trend={{ direction: "worsening", label: "-3pp vs minggu lalu" }}
         sample="n=58"
-        action="Jeda otomatis 20 menit setelah kerugian"
+        action="Ingatkan aku untuk jeda 20 menit setelah kerugian"
         active={rules.revenge}
         onToggle={() => toggle("revenge")}
+        evidenceNote="n=58 masih tergolong sampel kecil. Ini korelasi historis pada akunmu sendiri, bukan prediksi — dan tidak menunjukkan penyebabnya."
       >
         <div style={{ fontSize: 11.5, color: C.sub, lineHeight: 1.5 }}>
           Jeda rata-rata sebelum entry berikutnya berbeda tergantung hasil transaksi sebelumnya.
@@ -607,13 +679,14 @@ function InsightScreen() {
 
       <InsightCard
         icon={AlertTriangle}
-        tag="OVERTRADING"
+        tag="AKTIVITAS SETELAH RUGI BERUNTUN"
         title="Frekuensi transaksi naik setelah rugi beruntun"
         trend={{ direction: "improving", label: "+6pp vs minggu lalu" }}
         sample="n=19"
-        action="Notifikasi setelah 2x kerugian beruntun"
+        action="Ingatkan aku setelah 2x kerugian beruntun"
         active={rules.overtrade}
         onToggle={() => toggle("overtrade")}
+        evidenceNote="n=19 — sampel kecil, angka ini bisa berubah signifikan seiring bertambahnya data. Belum cukup untuk disimpulkan sebagai pola tetap."
       >
         <div style={{ fontSize: 11.5, color: C.sub, lineHeight: 1.5, marginBottom: 10 }}>
           Dibandingkan dengan aktivitas normal, kondisi berikut teramati dalam 1 jam setelah 2 kerugian beruntun.
@@ -636,9 +709,10 @@ function InsightScreen() {
         title="Win rate hari Jumat berada di bawah rata-rata"
         trend={{ direction: "worsening", label: "-9pp vs minggu lalu" }}
         sample="n=42"
-        action="Kurangi ukuran posisi 50% tiap Jumat"
+        action="Ingatkan aku mengecilkan posisi tiap Jumat"
         active={rules.weekday}
         onToggle={() => toggle("weekday")}
+        evidenceNote="n=42 dari 13 minggu terakhir. Pola historis pada jam trading dan simbol yang biasa kamu pakai — bisa berubah kalau kebiasaan tradingmu berubah."
       >
         <div style={{ height: 100, marginTop: 4, marginLeft: -16 }}>
           <ResponsiveContainer width="100%" height="100%">
@@ -721,11 +795,111 @@ function RuleBar({ label, current, limit, currency = "$", note, statusOverride }
   );
 }
 
-function ComplianceScreen() {
+function AccountCard({ account, onSelect }) {
+  const status = getAccountStatus(account);
+  return (
+    <button
+      onClick={onSelect}
+      style={{
+        textAlign: "left", width: "100%", background: C.surface, border: `1px solid ${status.level === "kritis" ? C.loss : C.border}`,
+        borderRadius: 16, padding: 14, display: "flex", flexDirection: "column", gap: 10,
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+        <div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{account.firm}</div>
+          <div style={{ fontSize: 11, color: C.sub, marginTop: 1 }}>
+            {account.phase} · ${account.size.toLocaleString("en-US")}
+          </div>
+        </div>
+        <span style={{
+          fontSize: 10, fontWeight: 700, fontFamily: FONT_MONO, padding: "3px 9px", borderRadius: 20,
+          color: status.color, background: `${status.color}22`,
+        }}>
+          {status.label.toUpperCase()}
+        </span>
+      </div>
+      <div>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 10.5, color: C.sub, marginBottom: 4 }}>
+          <span>{status.closestRule.name} (paling dekat limit)</span>
+          <span style={{ fontFamily: FONT_MONO, color: status.color }}>{status.closestRule.pct.toFixed(0)}%</span>
+        </div>
+        <div style={{ height: 6, borderRadius: 4, background: C.surfaceAlt, overflow: "hidden" }}>
+          <div style={{ width: `${Math.min(status.closestRule.pct, 100)}%`, height: "100%", background: status.color, borderRadius: 4 }} />
+        </div>
+        <div style={{ fontSize: 10.5, color: C.sub, marginTop: 5 }}>
+          Sisa buffer ${status.closestRule.buffer.toLocaleString("en-US")} sebelum limit tercapai.
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function AccountsSummaryScreen({ accounts, onSelectAccount, onAddAccount }) {
+  const critical = accounts.filter((a) => getAccountStatus(a).level === "kritis").length;
+  const warning = accounts.filter((a) => getAccountStatus(a).level === "hati-hati").length;
+
+  return (
+    <div style={{ padding: "18px 16px 90px", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div>
+        <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>Ringkasan Akun Funded</div>
+        <div style={{ color: C.sub, fontSize: 12, marginTop: 2, lineHeight: 1.5 }}>
+          {accounts.length} akun terhubung dari beberapa firm. Lihat mana yang perlu perhatian hari ini.
+        </div>
+      </div>
+
+      {(critical > 0 || warning > 0) && (
+        <div style={{
+          display: "flex", alignItems: "center", gap: 9, background: critical > 0 ? C.lossSoft : C.warnSoft,
+          border: `1px solid ${critical > 0 ? C.loss : C.warn}`, borderRadius: 12, padding: 12,
+        }}>
+          <AlertTriangle size={16} color={critical > 0 ? C.loss : C.warn} style={{ flexShrink: 0 }} />
+          <span style={{ fontSize: 11.5, color: C.text }}>
+            {critical > 0
+              ? `${critical} akun dalam status kritis — cek segera sebelum sesi berikutnya.`
+              : `${warning} akun mendekati salah satu batas limit.`}
+          </span>
+        </div>
+      )}
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {accounts.map((a) => (
+          <AccountCard key={a.id} account={a} onSelect={() => onSelectAccount(a.id)} />
+        ))}
+      </div>
+
+      <button
+        onClick={onAddAccount}
+        style={{
+          width: "100%", background: C.surfaceAlt, border: `1px dashed ${C.border}`, color: C.text,
+          fontWeight: 600, fontSize: 13, padding: "13px 0", borderRadius: 14, fontFamily: FONT_UI,
+          display: "flex", alignItems: "center", justifyContent: "center", gap: 7,
+        }}
+      >
+        <PlugZap size={15} color={C.sub} />
+        Hubungkan Akun Baru
+      </button>
+
+      <div style={{ display: "flex", gap: 8, padding: "2px 2px 0" }}>
+        <Info size={13} color={C.faint} style={{ flexShrink: 0, marginTop: 1 }} />
+        <span style={{ fontSize: 10, color: C.faint, lineHeight: 1.5 }}>
+          Status dihitung dari rugi harian, drawdown, dan aturan konsistensi masing-masing akun — bukan skor gabungan buatan.
+        </span>
+      </div>
+    </div>
+  );
+}
+
+
+function ComplianceScreen({ account: fundedAccount, onBack }) {
   const dailyPct = (fundedAccount.dailyLoss.current / fundedAccount.dailyLoss.limit) * 100;
   const ddPct = (fundedAccount.drawdown.current / fundedAccount.drawdown.limit) * 100;
-  const targetPct = (fundedAccount.profitTarget.current / fundedAccount.profitTarget.target) * 100;
-  const consistencyPct = (fundedAccount.consistency.largestDayProfit / fundedAccount.consistency.totalProfit) * 100;
+  const targetPct = fundedAccount.profitTarget.target > 0
+    ? (fundedAccount.profitTarget.current / fundedAccount.profitTarget.target) * 100
+    : 100;
+  const consistencyPct = fundedAccount.consistency.totalProfit > 0
+    ? (fundedAccount.consistency.largestDayProfit / fundedAccount.consistency.totalProfit) * 100
+    : 0;
   const consistencyBreach = consistencyPct > fundedAccount.consistency.limitPct;
   const daysMet = fundedAccount.tradingDays.current >= fundedAccount.tradingDays.required;
 
@@ -733,20 +907,23 @@ function ComplianceScreen() {
 
   return (
     <div style={{ padding: "18px 16px 90px", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div>
-        <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>Kepatuhan Akun Funded</div>
-        <div style={{ color: C.sub, fontSize: 12, marginTop: 2, lineHeight: 1.5 }}>
-          Pelacakan otomatis terhadap aturan akun funded — dihitung real-time dari data yang tersinkron via MT5.
+      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        {onBack && (
+          <button onClick={onBack} style={{ color: C.sub, flexShrink: 0 }}><ChevronLeft size={20} /></button>
+        )}
+        <div>
+          <div style={{ fontSize: 20, fontWeight: 700, color: C.text }}>Kepatuhan Akun Funded</div>
+          <div style={{ color: C.sub, fontSize: 12, marginTop: 2, lineHeight: 1.5 }}>
+            {fundedAccount.firm} · {fundedAccount.phase} — dihitung real-time dari data yang tersinkron via MT5.
+          </div>
         </div>
       </div>
 
-      {/* account identity */}
+      {/* account snapshot */}
       <Card style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
         <div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>{fundedAccount.firm}</div>
-          <div style={{ fontSize: 11, color: C.sub, marginTop: 1 }}>
-            {fundedAccount.phase} · ${fundedAccount.size.toLocaleString("en-US")}
-          </div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: C.text }}>${fundedAccount.size.toLocaleString("en-US")}</div>
+          <div style={{ fontSize: 11, color: C.sub, marginTop: 1 }}>Ukuran akun</div>
         </div>
         <div style={{
           fontSize: 10, fontFamily: FONT_MONO, color: C.sub, background: C.surfaceAlt,
@@ -790,22 +967,32 @@ function ComplianceScreen() {
 
       <Card>
         <SectionTitle>Target &amp; Syarat</SectionTitle>
-        <RuleBar
-          label="Target Profit"
-          current={fundedAccount.profitTarget.current}
-          limit={fundedAccount.profitTarget.target}
-          statusOverride={C.accent}
-          note={`${targetPct.toFixed(1)}% dari target tercapai.`}
-        />
+        {fundedAccount.profitTarget.target > 0 ? (
+          <RuleBar
+            label="Target Profit"
+            current={fundedAccount.profitTarget.current}
+            limit={fundedAccount.profitTarget.target}
+            statusOverride={C.accent}
+            note={`${targetPct.toFixed(1)}% dari target tercapai.`}
+          />
+        ) : (
+          <div style={{ fontSize: 11.5, color: C.sub, marginBottom: 14 }}>
+            Akun sudah di fase Funded — tidak ada target profit yang perlu dikejar untuk lanjut ke fase berikutnya.
+          </div>
+        )}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: 2 }}>
           <span style={{ fontSize: 12, color: C.text, fontWeight: 600 }}>Minimum Hari Trading</span>
-          <span style={{
-            display: "flex", alignItems: "center", gap: 5, fontFamily: FONT_MONO, fontSize: 11.5,
-            color: daysMet ? C.profit : C.sub,
-          }}>
-            {daysMet && <Check size={13} strokeWidth={3} />}
-            {fundedAccount.tradingDays.current} / {fundedAccount.tradingDays.required} hari
-          </span>
+          {fundedAccount.tradingDays.required > 0 ? (
+            <span style={{
+              display: "flex", alignItems: "center", gap: 5, fontFamily: FONT_MONO, fontSize: 11.5,
+              color: daysMet ? C.profit : C.sub,
+            }}>
+              {daysMet && <Check size={13} strokeWidth={3} />}
+              {fundedAccount.tradingDays.current} / {fundedAccount.tradingDays.required} hari
+            </span>
+          ) : (
+            <span style={{ fontSize: 11.5, color: C.faint, fontFamily: FONT_MONO }}>Tidak berlaku</span>
+          )}
         </div>
       </Card>
 
@@ -855,9 +1042,9 @@ function SubscriptionScreen({ onContinue }) {
   const [selected, setSelected] = useState("harian");
   return (
     <div style={{ padding: "18px 16px 90px" }}>
-      <div style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 4 }}>Paket Sinkronisasi</div>
+      <div style={{ fontSize: 20, fontWeight: 700, color: C.text, marginBottom: 4 }}>Lindungi Akun Funded-mu</div>
       <div style={{ color: C.sub, fontSize: 12, marginBottom: 16, lineHeight: 1.5 }}>
-        Pilih seberapa sering data trading dari akun MetaTrader 5 kamu disinkronkan secara otomatis.
+        Pilih seberapa sering aturan akun funded-mu dipantau dan disinkronkan otomatis dari MetaTrader 5 — semakin sering, semakin cepat kamu tahu saat mendekati batas.
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -989,7 +1176,7 @@ function RuleInput({ label, value, onChange, suffix = "%" }) {
 }
 
 function ConnectMT5Screen({ onBack, onFinish }) {
-  const [step, setStep] = useState(1); // 1: kredensial, 2: firm & aturan, 3: sukses
+  const [step, setStep] = useState(1); // 1: kredensial, 2: firm & aturan (wajib), 3: sukses
   const [account, setAccount] = useState("");
   const [server, setServer] = useState("");
   const [password, setPassword] = useState("");
@@ -1063,7 +1250,7 @@ function ConnectMT5Screen({ onBack, onFinish }) {
           <button onClick={() => setStep(1)} style={{ color: C.sub }}><ChevronLeft size={20} /></button>
           <div style={{ fontSize: 16, fontWeight: 700, color: C.text }}>Firm &amp; Aturan Akun</div>
         </div>
-        <div style={{ fontSize: 10.5, color: C.sub, marginBottom: 18, marginLeft: 30 }}>Langkah 2 dari 2</div>
+        <div style={{ fontSize: 10.5, color: C.sub, marginBottom: 18, marginLeft: 30 }}>Langkah 2 dari 2 · wajib diisi</div>
 
         <div style={{ fontSize: 11.5, color: C.sub, marginBottom: 8 }}>Prop Firm</div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 18 }}>
@@ -1089,8 +1276,14 @@ function ConnectMT5Screen({ onBack, onFinish }) {
           <RuleInput label="Min. Hari Trading" value={minDays} onChange={(e) => setMinDays(e.target.value)} suffix="hari" />
         </div>
 
-        <div style={{ fontSize: 11, color: C.sub, lineHeight: 1.5, marginBottom: 22 }}>
-          Nilai default mengikuti aturan umum {firm}. Sesuaikan jika paket kamu berbeda — parameter ini yang dipakai untuk memantau kepatuhan akunmu secara real-time.
+        <div style={{
+          display: "flex", gap: 8, background: C.warnSoft, border: `1px solid ${C.warn}`,
+          borderRadius: 10, padding: 10, marginBottom: 22,
+        }}>
+          <Info size={13} color={C.warn} style={{ flexShrink: 0, marginTop: 1.5 }} />
+          <div style={{ fontSize: 11, color: C.text, lineHeight: 1.5 }}>
+            Nilai default mengikuti aturan umum {firm}. Sesuaikan jika paket kamu berbeda — parameter inilah yang dipakai untuk memantau kepatuhan akunmu secara real-time, jadi pastikan sesuai kontrakmu sebelum lanjut.
+          </div>
         </div>
 
         <button
@@ -1120,7 +1313,7 @@ function ConnectMT5Screen({ onBack, onFinish }) {
       }}>
         <PlugZap size={17} color={C.accent} style={{ flexShrink: 0, marginTop: 1 }} />
         <div style={{ fontSize: 11.5, color: C.text, lineHeight: 1.5 }}>
-          Cukup dihubungkan sekali. Semua transaksi akan tersinkron otomatis lewat MetaApi sesuai jadwal paketmu.
+          Cukup dihubungkan sekali. Semua transaksi akan tersinkron otomatis lewat MetaApi sesuai jadwal paketmu — dan langkah berikutnya akan langsung mengatur pemantauan aturan funded-mu.
         </div>
       </div>
 
@@ -1147,9 +1340,10 @@ function ConnectMT5Screen({ onBack, onFinish }) {
 }
 
 /* ---------- App shell ---------- */
-export default function TradingJournalApp() {
+export default function StayFundedApp() {
   const [tab, setTab] = useState("funded");
   const [showConnect, setShowConnect] = useState(false);
+  const [selectedAccountId, setSelectedAccountId] = useState(null);
   const tabs = [
     { id: "funded", label: "Funded", icon: ShieldCheck },
     { id: "dashboard", label: "Dashboard", icon: LayoutGrid },
@@ -1180,8 +1374,8 @@ export default function TradingJournalApp() {
             <ShieldCheck size={15} color={C.accent} />
           </div>
           <div>
-            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, letterSpacing: 0.2 }}>Aftermath Journey</div>
-            <div style={{ fontSize: 9.5, color: C.sub, marginTop: -1 }}>Compliance &amp; jurnal untuk funded trader</div>
+            <div style={{ fontSize: 14, fontWeight: 700, color: C.text, letterSpacing: 0.2 }}>StayFunded</div>
+            <div style={{ fontSize: 9.5, color: C.sub, marginTop: -1 }}>Kepatuhan aturan &amp; jurnal untuk funded trader</div>
           </div>
         </div>
 
@@ -1190,12 +1384,25 @@ export default function TradingJournalApp() {
           {showConnect ? (
             <ConnectMT5Screen
               onBack={() => setShowConnect(false)}
-              onFinish={() => { setShowConnect(false); setTab("funded"); }}
+              onFinish={() => { setShowConnect(false); setTab("funded"); setSelectedAccountId(null); }}
             />
           ) : (
             <>
               {tab === "dashboard" && <Dashboard />}
-              {tab === "funded" && <ComplianceScreen />}
+              {tab === "funded" && (
+                selectedAccountId ? (
+                  <ComplianceScreen
+                    account={fundedAccounts.find((a) => a.id === selectedAccountId)}
+                    onBack={() => setSelectedAccountId(null)}
+                  />
+                ) : (
+                  <AccountsSummaryScreen
+                    accounts={fundedAccounts}
+                    onSelectAccount={setSelectedAccountId}
+                    onAddAccount={() => setShowConnect(true)}
+                  />
+                )
+              )}
               {tab === "insight" && <InsightScreen />}
               {tab === "history" && <HistoryScreen />}
               {tab === "subscription" && <SubscriptionScreen onContinue={() => setShowConnect(true)} />}
