@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Aftermath Journey — Dashboard Trading</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=Inter:wght@400;500;600&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
   :root{
     --ink:#111111;
@@ -20,11 +20,12 @@
     --line-soft:#E4E4DE;
     --border-w:1.5px;
     --radius:16px;
-    --shadow:4px 4px 0 var(--ink);
-    --shadow-sm:3px 3px 0 var(--ink);
+    --stroke:#111111;
+    --shadow:4px 4px 0 var(--stroke);
+    --shadow-sm:3px 3px 0 var(--stroke);
   }
   body{ transition:background-color .2s ease, color .2s ease; }
-  .card, .btn, select.acct-switch, .period-toggle{ transition:background-color .2s ease, border-color .2s ease, color .2s ease; }
+  .card, .btn, .acct-switch-btn, .period-toggle{ transition:background-color .2s ease, border-color .2s ease, color .2s ease; }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{
     background:var(--paper);
@@ -47,43 +48,62 @@
   .brand .mark{
     width:34px; height:34px; background:var(--ink); border-radius:8px;
     display:flex; align-items:center; justify-content:center;
-    color:var(--paper); font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:16px;
+    color:var(--paper); font-family:'Inter', sans-serif; font-weight:700; font-size:16px;
     transform:rotate(-4deg);
   }
   .brand h1{
-    font-family:'Space Grotesk', sans-serif; font-size:22px; letter-spacing:-0.02em;
+    font-family:'Inter', sans-serif; font-size:22px; letter-spacing:-0.02em;
   }
   .header-actions{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
 
-  select.acct-switch{
-    appearance:none; -webkit-appearance:none;
-    font-family:'Space Mono', monospace; font-size:13px; font-weight:700;
-    background:var(--card); border:var(--border-w) solid var(--ink); border-radius:10px;
-    padding:9px 34px 9px 14px; box-shadow:var(--shadow-sm);
-    cursor:pointer; outline:none;
-    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23111' stroke-width='3'><path d='M6 9l6 6 6-6'/></svg>");
-    background-repeat:no-repeat; background-position:right 10px center; background-size:14px;
+  .acct-switch-btn{
+    display:inline-flex; align-items:center; gap:9px;
+    font-family:'Inter', sans-serif; font-size:13px; font-weight:700;
+    background:var(--card); border:var(--border-w) solid var(--stroke); border-radius:10px;
+    padding:9px 14px;
+    box-shadow:var(--shadow-sm);
+    cursor:pointer; outline:none; color:var(--ink);
     transition:transform .1s ease, box-shadow .1s ease;
   }
-  select.acct-switch:focus{ outline:none; border-color:var(--ink); }
-  select.acct-switch::-moz-focus-inner{ border:0; }
-  select.acct-switch:hover{ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--ink); }
-  select.acct-switch:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--ink); }
+  .acct-switch-btn:hover{ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--stroke); }
+  .acct-switch-btn:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--stroke); }
+  .acct-switch-btn svg{ width:15px; height:15px; flex-shrink:0; }
   .btn{
-    font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:13px;
-    border:var(--border-w) solid var(--ink); border-radius:10px;
-    padding:9px 16px; cursor:pointer; background:var(--card);
+    font-family:'Inter', sans-serif; font-weight:700; font-size:13px;
+    border:var(--border-w) solid var(--stroke); border-radius:10px;
+    padding:9px 16px; cursor:pointer; background:var(--card); color:var(--ink);
     box-shadow:var(--shadow-sm);
     transition:transform .1s ease, box-shadow .1s ease;
   }
-  .btn:hover{ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--ink); }
-  .btn:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--ink); }
-  .btn-accent{ background:var(--accent); }
+  .btn:hover{ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--stroke); }
+  .btn:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--stroke); }
+  .btn-accent{ background:var(--accent); color:#111111; }
+
+  /* ---- Account switch popup ---- */
+  .acct-list{ display:flex; flex-direction:column; gap:9px; margin-top:4px; }
+  .acct-item{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    text-align:left; width:100%;
+    font-family:'Inter', sans-serif; font-size:13.5px; font-weight:600; color:var(--ink);
+    background:var(--card); border:var(--border-w) solid var(--stroke); border-radius:12px;
+    padding:13px 14px; cursor:pointer;
+    box-shadow:var(--shadow-sm);
+    transition:transform .1s ease, box-shadow .1s ease, background-color .12s ease;
+  }
+  .acct-item:hover{ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--stroke); }
+  .acct-item:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--stroke); }
+  .acct-item.active{ background:var(--ink); color:var(--paper); }
+  .acct-item .acct-item-meta{ display:flex; flex-direction:column; gap:3px; }
+  .acct-item .acct-item-type{
+    font-size:10px; text-transform:uppercase; letter-spacing:.06em; font-weight:700; opacity:.6;
+  }
+  .acct-item .acct-item-check{ width:16px; height:16px; flex-shrink:0; opacity:0; }
+  .acct-item.active .acct-item-check{ opacity:1; }
 
   /* ---- Card base ---- */
   .card{
     background:var(--card);
-    border:var(--border-w) solid var(--ink);
+    border:var(--border-w) solid var(--stroke);
     border-radius:var(--radius);
     padding:20px;
     position:relative;
@@ -97,11 +117,11 @@
     flex-wrap:wrap; gap:14px; margin-bottom:6px;
   }
   .equity-label{ font-size:12px; color:var(--ink); text-transform:uppercase; letter-spacing:.08em; font-weight:600; }
-  .equity-value{ font-family:'Space Mono', monospace; font-size:34px; font-weight:700; line-height:1.1; margin-top:4px;}
+  .equity-value{ font-family:'Inter', sans-serif; font-size:34px; font-weight:700; line-height:1.1; margin-top:4px;}
   .delta-pill{
     display:inline-flex; align-items:center; gap:5px;
-    font-family:'Space Mono', monospace; font-weight:700; font-size:13px;
-    padding:5px 10px; border-radius:20px; border:var(--border-w) solid var(--ink);
+    font-family:'Inter', sans-serif; font-weight:700; font-size:13px;
+    padding:5px 10px; border-radius:20px; border:var(--border-w) solid var(--stroke);
     margin-top:8px;
   }
   .delta-up{ background:var(--profit-tint); color:var(--ink); }
@@ -111,14 +131,14 @@
     display:flex; gap:8px; height:fit-content;
   }
   .period-toggle button{
-    font-family:'Space Mono', monospace; font-size:12px; font-weight:700;
-    border:var(--border-w) solid var(--ink); border-radius:10px;
-    background:var(--card); padding:8px 12px; cursor:pointer;
+    font-family:'Inter', sans-serif; font-size:12px; font-weight:700;
+    border:var(--border-w) solid var(--stroke); border-radius:10px;
+    background:var(--card); color:var(--ink); padding:8px 12px; cursor:pointer;
     box-shadow:var(--shadow-sm);
     transition:transform .1s ease, box-shadow .1s ease, background-color .12s ease;
   }
-  .period-toggle button:hover:not(.active){ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--ink); }
-  .period-toggle button:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--ink); }
+  .period-toggle button:hover:not(.active){ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--stroke); }
+  .period-toggle button:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--stroke); }
   .period-toggle button.active{ background:var(--ink); color:var(--paper); }
 
   .chart-wrap{ margin:14px -20px 0 -20px; }
@@ -130,20 +150,20 @@
   }
   .metric-card{ padding:16px; }
   .metric-label{ font-size:11px; color:var(--ink); text-transform:uppercase; letter-spacing:.06em; font-weight:600; margin-bottom:8px; }
-  .metric-value{ font-family:'Space Mono', monospace; font-size:22px; font-weight:700; color:var(--ink); }
-  .metric-sub{ font-size:11px; color:var(--ink); margin-top:4px; font-family:'Space Mono', monospace; }
+  .metric-value{ font-family:'Inter', sans-serif; font-size:22px; font-weight:700; color:var(--ink); }
+  .metric-sub{ font-size:11px; color:var(--ink); margin-top:4px; font-family:'Inter', sans-serif; }
   .pos{ color:var(--ink); } .neg{ color:var(--ink); }
 
   /* ---- Trade history ---- */
   .history-card h2{
-    font-family:'Space Grotesk', sans-serif; font-size:16px; margin-bottom:12px;
+    font-family:'Inter', sans-serif; font-size:16px; margin-bottom:12px;
   }
   .table-wrap{ margin:0 -20px; }
-  table{ width:100%; border-collapse:collapse; font-family:'Space Mono', monospace; font-size:12.5px; }
+  table{ width:100%; border-collapse:collapse; font-family:'Inter', sans-serif; font-size:12.5px; }
   thead tr{ background:var(--ink); }
   thead th{
     text-align:left; font-size:10.5px; text-transform:uppercase; letter-spacing:.05em;
-    color:var(--card); font-weight:700; padding:9px 10px;
+    color:var(--paper); font-weight:700; padding:9px 10px;
   }
   thead th:first-child{ padding-left:30px; }
   thead th:last-child{ padding-right:30px; }
@@ -154,13 +174,13 @@
   tbody tr:last-child td{ border-bottom:none; }
   .tag{
     display:inline-block; font-size:10px; font-weight:700; padding:2px 7px; border-radius:6px;
-    border:1px solid var(--ink); color:var(--ink);
+    border:1px solid var(--stroke); color:var(--ink);
   }
   .tag-buy{ background:var(--profit-tint); }
   .tag-sell{ background:var(--loss-tint); }
-  .src-auto{ color:var(--ink); font-size:10.5px; }
+  .src-auto{ color:var(--ink); font-size:10.5px; opacity:.65; }
 
-  footer{ text-align:center; margin-top:20px; color:var(--ink); font-size:11.5px; font-family:'Space Mono', monospace; }
+  footer{ text-align:center; margin-top:20px; color:var(--ink); font-size:11.5px; font-family:'Inter', sans-serif; opacity:.7; }
 
   @media (max-width:640px){
     .metrics{ grid-template-columns:repeat(2, 1fr); }
@@ -177,7 +197,7 @@
   }
   .modal-overlay.open{ display:flex; }
   .modal-card{
-    background:var(--card); border:var(--border-w) solid var(--ink);
+    background:var(--card); border:var(--border-w) solid var(--stroke);
     border-radius:20px 20px 0 0; padding:22px; width:100%; max-width:480px;
     max-height:88vh; overflow-y:auto; position:relative;
   }
@@ -185,8 +205,10 @@
     .modal-overlay{ align-items:center; }
     .modal-card{ border-radius:var(--radius); }
   }
+  .modal-overlay.modal-center{ align-items:center; padding:20px; }
+  .modal-overlay.modal-center .modal-card{ border-radius:var(--radius); max-width:400px; }
   .modal-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:4px; }
-  .modal-head h2{ font-family:'Space Grotesk', sans-serif; font-size:18px; }
+  .modal-head h2{ font-family:'Inter', sans-serif; font-size:18px; }
   .modal-close{
     width:32px; height:32px; padding:0; border-radius:50%;
     display:flex; align-items:center; justify-content:center; font-size:16px; line-height:1;
@@ -199,22 +221,23 @@
     font-weight:600; margin-bottom:6px;
   }
   .field input{
-    width:100%; font-family:'Space Mono', monospace; font-size:13.5px;
-    border:var(--border-w) solid var(--ink); border-radius:10px; padding:11px 12px;
+    width:100%; font-family:'Inter', sans-serif; font-size:13.5px;
+    border:var(--border-w) solid var(--stroke); border-radius:10px; padding:11px 12px;
     background:var(--card); color:var(--ink); outline:none;
   }
-  .field input:focus{ border-color:var(--ink); }
+  .field input::placeholder{ color:var(--muted); }
+  .field input:focus{ border-color:var(--stroke); }
   .field-hint{ font-size:10.5px; opacity:.6; margin-top:5px; }
 
   .type-toggle{ display:flex; gap:8px; }
   .type-toggle button{
-    flex:1; font-family:'Space Grotesk', sans-serif; font-weight:700; font-size:13px;
-    border:var(--border-w) solid var(--ink); border-radius:10px; background:var(--card);
+    flex:1; font-family:'Inter', sans-serif; font-weight:700; font-size:13px;
+    border:var(--border-w) solid var(--stroke); border-radius:10px; background:var(--card); color:var(--ink);
     padding:10px; cursor:pointer; box-shadow:var(--shadow-sm);
     transition:transform .1s ease, box-shadow .1s ease, background-color .12s ease;
   }
-  .type-toggle button:hover:not(.active){ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--ink); }
-  .type-toggle button:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--ink); }
+  .type-toggle button:hover:not(.active){ transform:translate(-2px,-2px); box-shadow:5px 5px 0 var(--stroke); }
+  .type-toggle button:active{ transform:translate(3px,3px); box-shadow:0 0 0 var(--stroke); }
   .type-toggle button.active{ background:var(--ink); color:var(--paper); }
 
   .submit-btn{ width:100%; padding:13px; font-size:14px; margin-top:6px; text-align:center; }
@@ -233,7 +256,15 @@
       <h1>AFTRMTH JRNY</h1>
     </div>
     <div class="header-actions">
-      <select class="acct-switch" id="acctSwitch"></select>
+      <button class="acct-switch-btn" id="acctSwitchBtn" type="button">
+        <span id="acctSwitchLabel">Pilih Akun</span>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M17 2.1l4 4-4 4"></path>
+          <path d="M3 12.1v-2a4 4 0 014-4h14"></path>
+          <path d="M7 21.9l-4-4 4-4"></path>
+          <path d="M21 11.9v2a4 4 0 01-4 4H3"></path>
+        </svg>
+      </button>
       <button class="btn btn-accent" id="connectBtn">+ Connect Account</button>
     </div>
   </header>
@@ -303,6 +334,17 @@
   </div>
 
   <footer>Data disinkronkan otomatis dari MetaApi &middot; Terakhir sync 2 menit lalu</footer>
+</div>
+
+<div class="modal-overlay modal-center" id="acctModal">
+  <div class="modal-card">
+    <div class="modal-head">
+      <h2>Pilih Akun</h2>
+      <button class="btn modal-close" id="acctModalClose" aria-label="Tutup">✕</button>
+    </div>
+    <div class="modal-sub">Ganti akun trading yang sedang ditampilkan.</div>
+    <div class="acct-list" id="acctList"></div>
+  </div>
 </div>
 
 <div class="modal-overlay" id="connectModal">
@@ -391,18 +433,44 @@ const accounts = [
 let currentAcctId = accounts[0].id;
 let currentPeriod = 30;
 
-// ---------- Populate account switcher ----------
-const acctSwitch = document.getElementById('acctSwitch');
-accounts.forEach(a=>{
-  const opt = document.createElement('option');
-  opt.value = a.id; opt.textContent = `${a.name}`;
-  acctSwitch.appendChild(opt);
-});
-acctSwitch.value = currentAcctId;
-acctSwitch.addEventListener('change', e=>{
-  currentAcctId = e.target.value;
+// ---------- Account switch popup ----------
+const acctSwitchBtn = document.getElementById('acctSwitchBtn');
+const acctSwitchLabel = document.getElementById('acctSwitchLabel');
+const acctModal = document.getElementById('acctModal');
+const acctList = document.getElementById('acctList');
+
+function renderAcctList(){
+  acctList.innerHTML = accounts.map(a => `
+    <button type="button" class="acct-item ${a.id===currentAcctId?'active':''}" data-id="${a.id}">
+      <span class="acct-item-meta">
+        <span>${a.name}</span>
+        <span class="acct-item-type">${a.type}</span>
+      </span>
+      <svg class="acct-item-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="20 6 9 17 4 12"></polyline>
+      </svg>
+    </button>
+  `).join('');
+  const active = accounts.find(a=>a.id===currentAcctId);
+  acctSwitchLabel.textContent = active ? active.name : 'Pilih Akun';
+}
+
+acctList.addEventListener('click', e=>{
+  const item = e.target.closest('.acct-item');
+  if(!item) return;
+  currentAcctId = item.dataset.id;
+  renderAcctList();
+  closeAcctModal();
   render();
 });
+
+acctSwitchBtn.addEventListener('click', ()=>{
+  renderAcctList();
+  acctModal.classList.add('open');
+});
+document.getElementById('acctModalClose').addEventListener('click', closeAcctModal);
+acctModal.addEventListener('click', e=>{ if(e.target === acctModal) closeAcctModal(); });
+function closeAcctModal(){ acctModal.classList.remove('open'); }
 
 document.getElementById('periodToggle').addEventListener('click', e=>{
   const btn = e.target.closest('button');
@@ -446,12 +514,8 @@ document.getElementById('connectForm').addEventListener('submit', e=>{
   const winBias = 0.45 + Math.random()*0.15;
   const newAcct = genAccount(newId, name, selectedType, startBal, seed, winBias);
   accounts.push(newAcct);
-
-  const opt = document.createElement('option');
-  opt.value = newAcct.id; opt.textContent = newAcct.name;
-  acctSwitch.appendChild(opt);
-  acctSwitch.value = newAcct.id;
   currentAcctId = newAcct.id;
+  renderAcctList();
 
   closeModal();
   render();
@@ -481,7 +545,7 @@ function render(){
   pill.textContent = `${delta>=0?'▲':'▼'} ${fmtMoney(Math.abs(delta))} (${deltaPct.toFixed(1)}%)`;
   pill.className = 'delta-pill ' + (delta>=0 ? 'delta-up':'delta-down');
 
-  // --- draw chart (black line, smooth curve, bleeds into card border) ---
+  // --- draw chart (line, smooth curve, bleeds into card border) ---
   const svg = document.getElementById('equityChart');
   const rect = svg.getBoundingClientRect();
   const w = Math.max(rect.width, 100), h = 170, padTop = 18, padBottom = 16;
@@ -561,6 +625,7 @@ function render(){
   document.getElementById('tradeRows').innerHTML = rows || `<tr><td colspan="6" style="color:var(--ink); text-align:center; padding:20px;">Belum ada trade di periode ini.</td></tr>`;
 }
 
+renderAcctList();
 render();
 window.addEventListener('resize', render);
 </script>
