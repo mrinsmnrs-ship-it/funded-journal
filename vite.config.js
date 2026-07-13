@@ -5,5 +5,5 @@ import react from '@vitejs/plugin-react';
 // Kalau repo-nya user page (nama repo persis "username.github.io"), ganti base jadi '/'.
 export default defineConfig({
   plugins: [react()],
-  base: '/carousel-demo/'
+  base: '/funded-journal/'
 });
